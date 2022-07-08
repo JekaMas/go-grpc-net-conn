@@ -9,8 +9,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
-	goc "go-grpc-net-conn"
-	"go-grpc-net-conn/testproto"
+	goc "github.com/JekaMas/go-grpc-net-conn"
+	"github.com/JekaMas/go-grpc-net-conn/testproto"
 )
 
 func dataFieldFunc[_ proto.Message](msg *testproto.Bytes) *[]byte {

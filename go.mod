@@ -1,4 +1,4 @@
-module go-grpc-net-conn
+module github.com/JekaMas/go-grpc-net-conn
 
 go 1.18
 
