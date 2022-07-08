@@ -1,13 +1,23 @@
 package grpc_net_conn
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
+
+// Stream pick only required from grpc interfaces
+type Stream interface {
+	SendMsg(m interface{}) error
+	RecvMsg(m interface{}) error
+}
+
+type CloseSender interface {
+	CloseSend() error
+}
 
 // Conn implements net.Conn across a gRPC stream. You must populate many
 // of the exported structs on this field so please read the documentation.
@@ -17,10 +27,10 @@ import (
 // LocalAddr, RemoteAddr, deadlines, etc. do not work.
 //
 // As documented on net.Conn, it is safe for concurrent read/write.
-type Conn struct {
+type Conn[T1, T2 proto.Message] struct {
 	// Stream is the stream to wrap into a Conn. This can be either a client
 	// or server stream and we will perform correctly.
-	Stream grpc.Stream
+	Stream Stream
 
 	// Request is the type to use for sending request data to the streaming
 	// endpoint. This must be a non-nil allocated value and must NOT point to
@@ -29,7 +39,7 @@ type Conn struct {
 	// The Reset method is never called on Request so you may set some
 	// fields on the request type and they will be sent for every request
 	// unless the Encode field changes it.
-	Request proto.Message
+	Request T1
 
 	// Response is the type to use for reading response data. This must be
 	// a non-nil allocated value and must NOT point to the same value as Request
@@ -37,7 +47,7 @@ type Conn struct {
 	//
 	// The Reset method will be called on Response during Reads so data you
 	// set initially will be lost.
-	Response proto.Message
+	Response T2
 
 	// ResponseLock, if non-nil, will be locked while calling SendMsg
 	// on the Stream. This can be used to prevent concurrent access to
@@ -45,11 +55,11 @@ type Conn struct {
 	ResponseLock *sync.Mutex
 
 	// Encode encodes messages into the Request. See Encoder for more information.
-	Encode Encoder
+	Encode Encoder[T1]
 
 	// Decode decodes messages from the Response into a byte slice. See
 	// Decoder for more information.
-	Decode Decoder
+	Decode Decoder[T2]
 
 	// readOffset tracks where we've read up to if we're reading a result
 	// that didn't fully fit into the target slice. See Read.
@@ -62,7 +72,7 @@ type Conn struct {
 }
 
 // Read implements io.Reader.
-func (c *Conn) Read(p []byte) (int, error) {
+func (c *Conn[T1, T2]) Read(p []byte) (int, error) {
 	c.readLock.Lock()
 	defer c.readLock.Unlock()
 
@@ -100,13 +110,14 @@ func (c *Conn) Read(p []byte) (int, error) {
 }
 
 // Write implements io.Writer.
-func (c *Conn) Write(p []byte) (int, error) {
+func (c *Conn[T1, T2]) Write(p []byte) (int, error) {
 	c.writeLock.Lock()
 	defer c.writeLock.Unlock()
 
 	total := len(p)
 	for {
 		// Encode our data into the request. Any error means we abort.
+		fmt.Println("!!!-SENDING-1", len(p), string(p), c.Request)
 		n, err := c.Encode(c.Request, p)
 		if err != nil {
 			return 0, err
@@ -143,8 +154,8 @@ func (c *Conn) Write(p []byte) (int, error) {
 //
 // This calls CloseSend underneath for clients, so read the documentation
 // for that to understand the semantics of this call.
-func (c *Conn) Close() error {
-	if cs, ok := c.Stream.(grpc.ClientStream); ok {
+func (c *Conn[T1, T2]) Close() error {
+	if cs, ok := c.Stream.(CloseSender); ok {
 		// We have to acquire the write lock since the gRPC docs state:
 		// "It is also not safe to call CloseSend concurrently with SendMsg."
 		c.writeLock.Lock()
@@ -156,19 +167,17 @@ func (c *Conn) Close() error {
 }
 
 // LocalAddr returns nil.
-func (c *Conn) LocalAddr() net.Addr { return nil }
+func (c *Conn[T1, T2]) LocalAddr() net.Addr { return nil }
 
 // RemoteAddr returns nil.
-func (c *Conn) RemoteAddr() net.Addr { return nil }
+func (c *Conn[T1, T2]) RemoteAddr() net.Addr { return nil }
 
 // SetDeadline is non-functional due to limitations on how gRPC works.
 // You can mimic deadlines often using call options.
-func (c *Conn) SetDeadline(time.Time) error { return nil }
+func (c *Conn[T1, T2]) SetDeadline(time.Time) error { return nil }
 
 // SetReadDeadline is non-functional, see SetDeadline.
-func (c *Conn) SetReadDeadline(time.Time) error { return nil }
+func (c *Conn[T1, T2]) SetReadDeadline(time.Time) error { return nil }
 
 // SetWriteDeadline is non-functional, see SetDeadline.
-func (c *Conn) SetWriteDeadline(time.Time) error { return nil }
-
-var _ net.Conn = (*Conn)(nil)
+func (c *Conn[T1, T2]) SetWriteDeadline(time.Time) error { return nil }

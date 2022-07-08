@@ -1,14 +1,18 @@
-package grpc_net_conn
+package grpc_net_conn_test
 
 import (
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/hashicorp/go-grpc-net-conn/testproto"
+	goc "go-grpc-net-conn"
+	"go-grpc-net-conn/testproto"
 )
 
 func TestConn(t *testing.T) {
+	t.Parallel()
+
 	impl := &testServer{
 		Send: [][]byte{
 			[]byte("hello"),
@@ -51,9 +55,15 @@ func TestConn(t *testing.T) {
 		require.Equal(3, n)
 		require.Equal("bye", string(data[:n]))
 	})
+
+	t.Run("net.Conn implementation", func(t *testing.T) {
+		var _ net.Conn = testStreamConn(testStreamClient(t, impl))
+	})
 }
 
 func TestConn_chunkedWrites(t *testing.T) {
+	t.Parallel()
+
 	impl := &testServer{
 		Chunk: 3,
 		Send: [][]byte{
@@ -93,7 +103,7 @@ func (s *testServer) Stream(stream testproto.TestService_StreamServer) error {
 	// Get our conn
 	conn := testStreamConn(stream)
 	if s.Chunk > 0 {
-		conn.Encode = ChunkedEncoder(conn.Encode, s.Chunk)
+		conn.Encode = goc.ChunkedEncoder(conn.Encode, s.Chunk)
 	}
 
 	for _, data := range s.Send {

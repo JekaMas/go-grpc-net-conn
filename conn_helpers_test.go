@@ -1,7 +1,8 @@
-package grpc_net_conn
+package grpc_net_conn_test
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 
@@ -9,22 +10,45 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/hashicorp/go-grpc-net-conn/testproto"
+	goc "go-grpc-net-conn"
+	"go-grpc-net-conn/testproto"
 )
 
-func testStreamConn(
-	stream grpc.Stream,
-) *Conn {
-	dataFieldFunc := func(msg proto.Message) *[]byte {
-		return &msg.(*testproto.Bytes).Data
-	}
+type dataer interface {
+	GetData() []byte
+}
 
-	return &Conn{
+func dataFieldFunc[T proto.Message, T1 dataer](msg T) *[]byte {
+	dat, ok := any(msg).(T1)
+	data := dat.GetData()
+
+	fmt.Println("!!!!!!!!!!!-dataFieldFunc-1.0", len(data), data == nil)
+	data = append(data, byte(1))
+	fmt.Println("!!!!!!!!!!!-dataFieldFunc-1.1", len(data), data == nil, string(data))
+	fmt.Println("!!!!!!!!!!!-dataFieldFunc-1.2", dat, ok, data, dat.GetData())
+	return &data
+}
+
+func TestDataFieldGetter(t *testing.T) {
+	msg := &testproto.Bytes{Data: []byte{}}
+
+	msgDataPtr := dataFieldFunc[*testproto.Bytes, *testproto.Bytes](msg)
+
+	expected := []byte{1, 2, 3, 4}
+	*msgDataPtr = expected
+
+	require.Equal(t, expected, msg.Data)
+}
+
+func testStreamConn(
+	stream goc.Stream,
+) *goc.Conn[*testproto.Bytes, *testproto.Bytes] {
+	return &goc.Conn[*testproto.Bytes, *testproto.Bytes]{
 		Stream:   stream,
-		Request:  &testproto.Bytes{},
-		Response: &testproto.Bytes{},
-		Encode:   SimpleEncoder(dataFieldFunc),
-		Decode:   SimpleDecoder(dataFieldFunc),
+		Request:  &testproto.Bytes{Data: []byte{}},
+		Response: &testproto.Bytes{Data: []byte{}},
+		Encode:   goc.SimpleEncoder[*testproto.Bytes](dataFieldFunc[*testproto.Bytes, *testproto.Bytes]),
+		Decode:   goc.SimpleDecoder[*testproto.Bytes](dataFieldFunc[*testproto.Bytes, *testproto.Bytes]),
 	}
 }
 
