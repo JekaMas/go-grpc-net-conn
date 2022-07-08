@@ -13,7 +13,7 @@ import (
 	"github.com/JekaMas/go-grpc-net-conn/testproto"
 )
 
-func dataFieldFunc[_ proto.Message](msg *testproto.Bytes) *[]byte {
+func dataFieldFunc(msg *testproto.Bytes) *[]byte {
 	return &msg.Data
 }
 
@@ -27,7 +27,7 @@ func TestDataFieldGetter(t *testing.T) {
 	t.Run("generic getter", func(t *testing.T) {
 		msg := &testproto.Bytes{Data: []byte{3, 2, 1}}
 
-		msgDataPtr := dataFieldFunc[*testproto.Bytes](msg)
+		msgDataPtr := dataFieldFunc(msg)
 
 		expected := []byte{1, 2, 3, 4}
 		*msgDataPtr = expected
@@ -50,7 +50,7 @@ func TestDataFieldGetter(t *testing.T) {
 func TestDataFieldGetterOld(t *testing.T) {
 	msg := &testproto.Bytes{Data: []byte{3, 2, 1}}
 
-	msgDataPtr := dataFieldFunc[*testproto.Bytes](msg)
+	msgDataPtr := dataFieldFunc(msg)
 
 	expected := []byte{1, 2, 3, 4}
 	*msgDataPtr = expected
@@ -63,10 +63,10 @@ func testStreamConn(
 ) *goc.Conn[*testproto.Bytes, *testproto.Bytes] {
 	return &goc.Conn[*testproto.Bytes, *testproto.Bytes]{
 		Stream:   stream,
-		Request:  &testproto.Bytes{Data: []byte{}},
-		Response: &testproto.Bytes{Data: []byte{}},
-		Encode:   goc.SimpleEncoder[*testproto.Bytes](dataFieldFunc[*testproto.Bytes]),
-		Decode:   goc.SimpleDecoder[*testproto.Bytes](dataFieldFunc[*testproto.Bytes]),
+		Request:  &testproto.Bytes{},
+		Response: &testproto.Bytes{},
+		Encode:   goc.SimpleEncoder(dataFieldFunc),
+		Decode:   goc.SimpleDecoder(dataFieldFunc),
 	}
 }
 

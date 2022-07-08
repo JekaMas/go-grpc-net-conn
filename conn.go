@@ -26,7 +26,7 @@ type CloseSender interface {
 // LocalAddr, RemoteAddr, deadlines, etc. do not work.
 //
 // As documented on net.Conn, it is safe for concurrent read/write.
-type Conn[T1, T2 proto.Message] struct {
+type Conn[RequestType, ResponseType proto.Message] struct {
 	// Stream is the stream to wrap into a Conn. This can be either a client
 	// or server stream and we will perform correctly.
 	Stream Stream
@@ -38,7 +38,7 @@ type Conn[T1, T2 proto.Message] struct {
 	// The Reset method is never called on Request so you may set some
 	// fields on the request type and they will be sent for every request
 	// unless the Encode field changes it.
-	Request T1
+	Request RequestType
 
 	// Response is the type to use for reading response data. This must be
 	// a non-nil allocated value and must NOT point to the same value as Request
@@ -46,7 +46,7 @@ type Conn[T1, T2 proto.Message] struct {
 	//
 	// The Reset method will be called on Response during Reads so data you
 	// set initially will be lost.
-	Response T2
+	Response ResponseType
 
 	// ResponseLock, if non-nil, will be locked while calling SendMsg
 	// on the Stream. This can be used to prevent concurrent access to
@@ -54,11 +54,11 @@ type Conn[T1, T2 proto.Message] struct {
 	ResponseLock *sync.Mutex
 
 	// Encode encodes messages into the Request. See Encoder for more information.
-	Encode Encoder[T1]
+	Encode Encoder[RequestType]
 
 	// Decode decodes messages from the Response into a byte slice. See
 	// Decoder for more information.
-	Decode Decoder[T2]
+	Decode Decoder[ResponseType]
 
 	// readOffset tracks where we've read up to if we're reading a result
 	// that didn't fully fit into the target slice. See Read.

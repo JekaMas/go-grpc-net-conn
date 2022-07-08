@@ -10,7 +10,7 @@ response of an RPC is a stream) then the `net.Conn` is a
 Standard `go get`:
 
 ```
-$ go get github.com/mitchellh/go-grpc-net-conn
+$ go get github.com/JekaMas/go-grpc-net-conn
 ```
 
 ## Usage & Example
@@ -51,7 +51,7 @@ fieldFunc := func(msg proto.Message) *[]byte {
 }
 
 // Wrap our conn around the response.
-conn := &grpc_net_conn.Conn{
+conn := &grpc_net_conn.Conn[*example.Bytes, *example.Bytes]{
 	Stream: resp,
 	Request: &example.Bytes{},
 	Response: &example.Bytes{},
