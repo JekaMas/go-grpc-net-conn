@@ -65,7 +65,6 @@ func (*Bytes) Descriptor() ([]byte, []int) {
 }
 
 func (x *Bytes) GetData() []byte {
-	return x.Data
 	if x != nil {
 		return x.Data
 	}

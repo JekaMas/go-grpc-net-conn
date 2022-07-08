@@ -2,7 +2,6 @@ package grpc_net_conn_test
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"testing"
 
@@ -14,25 +13,44 @@ import (
 	"go-grpc-net-conn/testproto"
 )
 
-type dataer interface {
-	GetData() []byte
+func dataFieldFunc[_ proto.Message](msg *testproto.Bytes) *[]byte {
+	return &msg.Data
 }
 
-func dataFieldFunc[T proto.Message, T1 dataer](msg T) *[]byte {
-	dat, ok := any(msg).(T1)
-	data := dat.GetData()
-
-	fmt.Println("!!!!!!!!!!!-dataFieldFunc-1.0", len(data), data == nil)
-	data = append(data, byte(1))
-	fmt.Println("!!!!!!!!!!!-dataFieldFunc-1.1", len(data), data == nil, string(data))
-	fmt.Println("!!!!!!!!!!!-dataFieldFunc-1.2", dat, ok, data, dat.GetData())
-	return &data
+func dataFieldFuncOld(msg proto.Message) *[]byte {
+	return &msg.(*testproto.Bytes).Data
 }
 
 func TestDataFieldGetter(t *testing.T) {
-	msg := &testproto.Bytes{Data: []byte{}}
+	t.Parallel()
 
-	msgDataPtr := dataFieldFunc[*testproto.Bytes, *testproto.Bytes](msg)
+	t.Run("generic getter", func(t *testing.T) {
+		msg := &testproto.Bytes{Data: []byte{3, 2, 1}}
+
+		msgDataPtr := dataFieldFunc[*testproto.Bytes](msg)
+
+		expected := []byte{1, 2, 3, 4}
+		*msgDataPtr = expected
+
+		require.Equal(t, expected, msg.Data)
+	})
+
+	t.Run("normal getter", func(t *testing.T) {
+		msg := &testproto.Bytes{Data: []byte{3, 2, 1}}
+
+		msgDataPtr := dataFieldFuncOld(msg)
+
+		expected := []byte{1, 2, 3, 4}
+		*msgDataPtr = expected
+
+		require.Equal(t, expected, msg.Data)
+	})
+}
+
+func TestDataFieldGetterOld(t *testing.T) {
+	msg := &testproto.Bytes{Data: []byte{3, 2, 1}}
+
+	msgDataPtr := dataFieldFunc[*testproto.Bytes](msg)
 
 	expected := []byte{1, 2, 3, 4}
 	*msgDataPtr = expected
@@ -47,8 +65,8 @@ func testStreamConn(
 		Stream:   stream,
 		Request:  &testproto.Bytes{Data: []byte{}},
 		Response: &testproto.Bytes{Data: []byte{}},
-		Encode:   goc.SimpleEncoder[*testproto.Bytes](dataFieldFunc[*testproto.Bytes, *testproto.Bytes]),
-		Decode:   goc.SimpleDecoder[*testproto.Bytes](dataFieldFunc[*testproto.Bytes, *testproto.Bytes]),
+		Encode:   goc.SimpleEncoder[*testproto.Bytes](dataFieldFunc[*testproto.Bytes]),
+		Decode:   goc.SimpleDecoder[*testproto.Bytes](dataFieldFunc[*testproto.Bytes]),
 	}
 }
 

@@ -1,9 +1,6 @@
 package grpc_net_conn
 
 import (
-	"fmt"
-
-	"github.com/davecgh/go-spew/spew"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -36,18 +33,11 @@ type Decoder[T proto.Message] func(m T, offset int, p []byte) ([]byte, error)
 //	})
 func SimpleEncoder[T proto.Message](innerDataPtrGetter func(msg T) *[]byte) Encoder[T] {
 	return func(msg T, p []byte) (int, error) {
-		fmt.Println("!!!-SimpleEncoder-2.0", len(p), string(p), spew.Sdump(msg))
 		bytePtr := innerDataPtrGetter(msg)
 		*bytePtr = p
-		fmt.Println("!!!-SimpleEncoder-2.1", len(*bytePtr), string(*bytePtr), spew.Sdump(msg))
 
-		fmt.Println("!!!-SimpleEncoder-2.2", len(p), string(p), any(msg).(datum).GetData())
 		return len(p), nil
 	}
-}
-
-type datum interface {
-	GetData() []byte
 }
 
 // SimpleDecoder is the easiest way to generate a Decoder for a proto.Message.
@@ -57,6 +47,7 @@ func SimpleDecoder[T proto.Message](innerDataPtrGetter func(msg T) *[]byte) Deco
 	return func(msg T, offset int, p []byte) ([]byte, error) {
 		bytePtr := innerDataPtrGetter(msg)
 		copy(p, (*bytePtr)[offset:])
+
 		return *bytePtr, nil
 	}
 }
