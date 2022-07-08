@@ -1,7 +1,6 @@
 package grpc_net_conn
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -117,7 +116,6 @@ func (c *Conn[T1, T2]) Write(p []byte) (int, error) {
 	total := len(p)
 	for {
 		// Encode our data into the request. Any error means we abort.
-		fmt.Println("!!!-SENDING-1", len(p), string(p), c.Request)
 		n, err := c.Encode(c.Request, p)
 		if err != nil {
 			return 0, err
